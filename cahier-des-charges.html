@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MYTHOS — Cahier des Charges v2</title>
+  <title>MYTHOS — Cahier des Charges</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
@@ -533,8 +533,6 @@
     .mockup-item img {
       max-width: 100%;
       border-radius: 12px;
-      border: 1px solid var(--border);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .mockup-item .caption {
@@ -552,8 +550,6 @@
     .mockup-single img {
       max-width: 80%;
       border-radius: 12px;
-      border: 1px solid var(--border);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     /* SCENARIO CARD */
@@ -674,8 +670,20 @@
       }
 
       .cover {
-        min-height: auto;
-        padding: 40px 30px;
+        min-height: 100vh;
+        height: 100vh;
+        padding: 60px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .cover h1 {
+        background: none;
+        -webkit-background-clip: unset;
+        -webkit-text-fill-color: #ffffff;
+        color: #ffffff;
       }
 
       .toc {
@@ -781,6 +789,7 @@
     }
 
     @page :first {
+      margin: 0;
       @bottom-center {
         content: none;
       }
@@ -824,7 +833,7 @@
       Workshop 5A TL — S1 — Bloc 1 RNCP38822<br>
       Kays ZAHIDI &bull; Samy ZEROUALI &bull; Youri EMMANUEL &bull; Yassir SABBAR
     </p>
-    <div class="version-badge">v2.0 — Février 2026</div>
+    <div class="version-badge">Février 2026</div>
   </div>
 
   <!-- ================= TOC ================= -->
@@ -1344,8 +1353,17 @@
           Multijoueur</div>
       </div>
     </div>
-    <blockquote>MYTHOS est le seul acteur dans le quadrant <strong>Multijoueur + IA Générative</strong>, ce qui
-      constitue un avantage de premier entrant significatif.</blockquote>
+    <blockquote>À ce jour, aucun acteur identifié ne combine simultanément : <strong>IA générative temps réel</strong>,
+      <strong>multijoueur synchronisé</strong> et <strong>moteur narratif modulaire</strong>. Cependant, MYTHOS fait face
+      à une concurrence indirecte :
+      <ul>
+        <li>Jeux sociaux multijoueurs (Among Us, Werewolf Online)</li>
+        <li>Outils IA roleplay (AI Dungeon, Character.AI)</li>
+        <li>Plateformes JDR digitales (Roll20, D&amp;D Beyond)</li>
+      </ul>
+      La différenciation repose sur la combinaison des trois piliers, ce qui constitue un avantage de premier entrant
+      significatif.
+    </blockquote>
 
     <!-- ================= SECTION 3 ================= -->
     <h2 id="sec3" class="section-break">3. Étude de faisabilité</h2>
@@ -1533,7 +1551,17 @@
         </tr>
       </tbody>
     </table>
-    <p><strong>Coût IA par partie estime :</strong> ~0.04 USD (mix Sonnet narration + Haiku phases simples).</p>
+    <div class="card">
+      <h4>Coût IA par partie — Estimation détaillée</h4>
+      <p>Estimation basée sur :</p>
+      <ul>
+        <li>2 appels IA par round (narration + résolution)</li>
+        <li>5 rounds (TRIBUNAL) / 8 rounds (DEEP)</li>
+        <li>~1 200 tokens entrée + 800 tokens sortie par appel</li>
+        <li>Mix Sonnet (70%) + Haiku (30%)</li>
+      </ul>
+      <p><strong>Coût moyen estimé : ~0.04 USD / partie</strong> (hypothèse testée en POC Sprint 0).</p>
+    </div>
 
     <h3>3.3 Faisabilite organisationnelle</h3>
     <table>
@@ -2071,6 +2099,16 @@ graph TB
     SOCKETB --> REDIS
       </pre>
     </div>
+    <div class="card">
+      <h4>Source de vérité et gestion de l'état</h4>
+      <ul>
+        <li><strong>PostgreSQL</strong> constitue la source de vérité durable (données persistantes : utilisateurs, parties
+          terminées, historique).</li>
+        <li><strong>Redis</strong> est utilisé comme state runtime temps réel pour les sessions actives (cache, timers, votes,
+          actions).</li>
+        <li>En cas de désynchronisation, le serveur reconstruit l'état depuis PostgreSQL.</li>
+      </ul>
+    </div>
 
     <h3>5.2 Stack technique</h3>
     <table>
@@ -2166,7 +2204,7 @@ erDiagram
         string email UK
         string password_hash
         string username UK
-        enum rôle"player | admin"
+        enum role "player | admin"
         string oauth_provider
         datetime created_at
         datetime banned_until
@@ -2292,7 +2330,7 @@ sequenceDiagram
         <tr>
           <td><code>POST</code></td>
           <td>/api/auth/login</td>
-          <td>Connexion (JWT 24h)</td>
+          <td>Connexion (Access Token 15 min + Refresh Token 7 jours, rotation activée)</td>
           <td>Non</td>
         </tr>
         <tr>
@@ -3557,6 +3595,17 @@ graph LR
       </tbody>
     </table>
 
+    <div class="card">
+      <h4>Gestion des réponses IA invalides</h4>
+      <p>En cas de réponse IA invalide (JSON mal formé, fuite rôle secret, contenu non conforme) :</p>
+      <ul>
+        <li>Validation schema backend obligatoire avant diffusion</li>
+        <li>Si invalide → retry automatique (max 3 tentatives)</li>
+        <li>Si échec → fallback narration template pré-générée</li>
+      </ul>
+      <p><strong>Aucun contenu IA n'est diffusé sans validation serveur.</strong></p>
+    </div>
+
     <h3>7.3 Cache Redis</h3>
     <table>
       <thead>
@@ -3626,7 +3675,9 @@ graph LR
         <tr>
           <td>Authentification</td>
           <td>JWT RS256 + refresh token</td>
-          <td>@nestjs/jwt, access 15min, refresh 7j, rotation</td>
+          <td>@nestjs/jwt, access 15min, refresh 7j, rotation. Les clés privées RS256 sont stockées via variables
+            d'environnement sécurisées (Railway/Vercel). Rotation des clés prévue tous les 6 mois ou en cas d'incident de
+            sécurité.</td>
         </tr>
         <tr>
           <td>Autorisation</td>
@@ -3830,7 +3881,7 @@ graph LR
           <td>M1</td>
           <td>Cadrage valide</td>
           <td>21/02/2026</td>
-          <td>CDC v2, maquettes Figma, repo + CI/CD</td>
+          <td>CDC, maquettes Figma, repo + CI/CD</td>
           <td>CDC approuve, 14 ecrans Figma valides, pipeline vert</td>
         </tr>
         <tr>
@@ -3888,7 +3939,7 @@ gantt
 
     section Sprint 0 — Cadrage
     Kickoff + outils             :s0a, 2026-02-10, 3d
-    Cahier des charges v2        :s0b, after s0a, 4d
+    Cahier des charges            :s0b, after s0a, 4d
     Maquettes Figma              :s0c, 2026-02-12, 5d
     Architecture + CI/CD         :s0d, after s0a, 5d
     POC IA (1 flux narratif)     :s0e, 2026-02-17, 4d
@@ -3991,7 +4042,7 @@ gantt
         </tr>
         <tr>
           <td>S0-07</td>
-          <td>Cahier des charges v2</td>
+          <td>Cahier des charges</td>
           <td>Kays</td>
           <td>2</td>
         </tr>
@@ -4361,6 +4412,16 @@ gantt
     <p><code>S0-02 → S0-04 → S1-01 → S1-05 → S2-01 → S3-01 → S3-03 → S4-01 → S5-04 → SB-01</code></p>
     <p>Tout retard sur ces tickets impacte directement la date de livraison. Le monitoring de ces tickets est
       prioritaire lors des daily standups.</p>
+
+    <div class="card">
+      <h4>Dépendances structurantes</h4>
+      <ul>
+        <li><strong>POC IA (Sprint 0)</strong> conditionne Game Engine</li>
+        <li><strong>Auth &amp; BDD</strong> conditionnent sessions multijoueur</li>
+        <li><strong>WebSocket</strong> conditionne TRIBUNAL temps réel</li>
+      </ul>
+      <p>Toute dérive sur ces tâches impacte directement la date de livraison MVP.</p>
+    </div>
 
     <h3>8.8 Budget détaillé du projet</h3>
     <p>Le projet est réalisé dans un contexte academique : les ressources humaines ne sont pas facturees. Le budget réel
@@ -4980,6 +5041,18 @@ gantt
       </tbody>
     </table>
 
+    <div class="card">
+      <h4>Actions correctives par seuil rouge</h4>
+      <p>Chaque indicateur déclenche une action corrective en cas de seuil rouge :</p>
+      <ul>
+        <li><strong>SPI &lt; 0.85</strong> → Réduction scope (suppression COULD)</li>
+        <li><strong>CPI &lt; 0.75</strong> → Passage prioritaire sur modèle Haiku</li>
+        <li><strong>Bug rate &gt; 2</strong> → Sprint dédié correction</li>
+        <li><strong>Latence IA &gt; 8s (P95)</strong> → Activation fallback narratif</li>
+      </ul>
+      <p>Les actions sont validées en Sprint Review ou COPIL selon criticité.</p>
+    </div>
+
     <h3>10.2 KPIs Produit (5 indicateurs)</h3>
     <table>
       <thead>
@@ -5295,7 +5368,8 @@ gantt
         </tr>
         <tr>
           <td>Protection contre les injections</td>
-          <td>ORM Prisma (requetes parametrees), validation Zod, sanitisation des entrees</td>
+          <td>ORM Prisma (requetes parametrees), validation via DTO + class-validator côté backend (NestJS Pipes
+            globaux), validation Zod uniquement côté frontend pour validation formulaire, sanitisation des entrees</td>
         </tr>
         <tr>
           <td>Journalisation et tracabilite</td>
@@ -5414,7 +5488,9 @@ gantt
           <td>Anthropic (Claude API)</td>
           <td>USA</td>
           <td>Actions joueurs (T4)</td>
-          <td>Clauses contractuelles types, pas de retention des prompts</td>
+          <td>Clauses contractuelles types. Anthropic indique ne pas conserver les prompts à des fins d'entraînement
+            (selon documentation publique au moment de rédaction). Cette garantie devra être confirmée contractuellement en
+            environnement production.</td>
         </tr>
         <tr>
           <td>Vercel</td>
@@ -5470,8 +5546,14 @@ gantt
     </table>
 
     <h4>Protection des mineurs (Article 8 RGPD + CNIL)</h4>
-    <p>MYTHOS est un jeu en ligne susceptible d'attirer un public jeune. La réglementation RGPD impose des mesures
-      renforcées pour les utilisateurs de moins de 16 ans (seuil français : 15 ans).</p>
+    <p>Conformément au RGPD et aux recommandations CNIL (seuil France : 15 ans) :</p>
+    <ul>
+      <li><strong>Inscription libre à partir de 15 ans</strong></li>
+      <li><strong>Entre 13 et 15 ans :</strong> consentement parental via double opt-in obligatoire</li>
+      <li><strong>En dessous de 13 ans :</strong> inscription refusée</li>
+    </ul>
+    <p>Le choix d'un seuil minimal à 13 ans est aligné avec les pratiques internationales (COPPA), mais le consentement
+      parental reste requis jusqu'à 15 ans en France.</p>
     <table>
       <thead>
         <tr>
@@ -5482,11 +5564,11 @@ gantt
       <tbody>
         <tr>
           <td><strong>Âge minimum</strong></td>
-          <td>Vérification déclarative à l'inscription : 13 ans minimum (alignement COPPA + pratiques du marché)</td>
+          <td>Vérification déclarative à l'inscription : 13 ans minimum, inscription refusée en dessous</td>
         </tr>
         <tr>
           <td><strong>Consentement parental (13-15 ans)</strong></td>
-          <td>Workflow d'inscription avec saisie email parental + lien de validation (double opt-in)</td>
+          <td>Workflow d'inscription avec saisie email parental + lien de validation (double opt-in obligatoire)</td>
         </tr>
         <tr>
           <td><strong>Contenus IA adaptés</strong></td>
